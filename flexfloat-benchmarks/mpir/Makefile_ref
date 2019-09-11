@@ -1,0 +1,27 @@
+TARGET = air_ref
+
+CC = gcc
+CFLAGS = -O3 -std=c99
+LIBS = -lm
+
+
+.PHONY: default all clean
+
+default: $(TARGET)
+all: default
+
+SOURCES = air.c
+OBJECTS = $(patsubst %.c, $(OUTPUT_DIR)%.o, $(SOURCES))
+HEADERS = $(wildcard *.h)
+
+$(OUTPUT_DIR)%.o: %.c $(HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+.PRECIOUS: $(TARGET) $(OBJECTS)
+
+$(TARGET): $(OBJECTS)
+	$(CC) $(OBJECTS) -Wall $(LIBS) -o $(OUTPUT_DIR)$@
+
+clean:
+	-rm -f $(OUTPUT_DIR)*.o
+	-rm -f $(OUTPUT_DIR)$(TARGET)

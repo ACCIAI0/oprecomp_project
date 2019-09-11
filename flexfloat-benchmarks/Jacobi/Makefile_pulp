@@ -1,0 +1,11 @@
+PULP_OMP_APP = test
+PULP_APP_OMP_SRCS = jacobi.c
+
+PULP_CFLAGS += -O3 -fsingle-precision-constant  -I../common/
+PULP_LDFLAGS += -lm
+pulpFpu=1
+
+DATASET ?= 0
+PULP_CFLAGS += -DDATASET=$(DATASET)
+
+include $(PULP_SDK_HOME)/install/rules/pulp.mk

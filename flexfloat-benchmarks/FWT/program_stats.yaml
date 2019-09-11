@@ -1,0 +1,8 @@
+ddsub_assign_refs: [0, 0]
+addsub_refs: [0, 4]
+assign_refs: [0, 5]
+call_refs: [0, 0]
+maxlevel_assign_refs: [0, 3]
+muldiv_assign_refs: [0, 0]
+muldiv_refs: [0, 0]
+use_refs: [0, 9]

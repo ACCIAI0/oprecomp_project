@@ -1,0 +1,8 @@
+addsub_assign_refs: [0, 0, 0, 0, 0, 0, 0, 0]
+addsub_refs: [0, 0, 1, 1, 2, 0, 4, 4]
+assign_refs: [0, 1, 2, 1, 3, 0, 1, 4]
+call_refs: [0, 0, 0, 0, 0, 0, 0, 0]
+maxlevel_assign_refs: [0, 2, 3, 2, 2, 0, 1, 2]
+muldiv_assign_refs: [0, 0, 0, 0, 0, 0, 0, 0]
+muldiv_refs: [1, 2, 7, 3, 8, 1, 2, 4]
+use_refs: [1, 3, 10, 5, 13, 1, 7, 12]

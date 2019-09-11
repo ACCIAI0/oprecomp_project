@@ -1,0 +1,38 @@
+TARGET = air_flex
+
+FLEXFLOAT_LIB_DIR  ?= ../../flexfloat/build
+FLEXFLOAT_INC_DIR  ?= ../../flexfloat/include
+LIBS = -lm  $(FLEXFLOAT_LIB_DIR)/libflexfloat.a -flto
+CC = g++
+CFLAGS = -O3 -std=c++11 -flto -I$(FLEXFLOAT_INC_DIR) -fpermissive
+
+CONF_MODE ?= flags
+OUTPUT_DIR ?= ./
+
+ifeq ($(CONF_MODE),flags)
+CFLAGS += -DEXP_A=11 -DFRAC_A=52  -DEXP_L=11 -DFRAC_L=52 -DEXP_U=11 -DFRAC_U=52 -DEXP_P=11 -DFRAC_P=52 -DEXP_X=11 -DFRAC_X=52 -DEXP_B=11 -DFRAC_B=52 -DEXP_SOL_TMP1=11 -DFRAC_SOL_TMP1=52 -DEXP_SOL_TEMP=11 -DFRAC_SOL_TEMP=52
+else
+CFLAGS += $(EXT_CFLAGS)
+endif
+
+
+.PHONY: default all clean
+
+default: $(TARGET)
+all: default
+
+SOURCES = air_flex.c
+OBJECTS = $(patsubst %.c, $(OUTPUT_DIR)%.o, $(SOURCES))
+HEADERS = $(wildcard *.h)
+
+$(OUTPUT_DIR)%.o: %.c $(HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+.PRECIOUS: $(TARGET) $(OBJECTS)
+
+$(TARGET): $(OBJECTS)
+	$(CC) $(OBJECTS) -Wall $(LIBS) -o $(OUTPUT_DIR)$@
+
+clean:
+	-rm -f $(OUTPUT_DIR)*.o
+	-rm -f $(OUTPUT_DIR)$(TARGET)
