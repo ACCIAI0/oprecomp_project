@@ -76,6 +76,9 @@ def main(argv):
     utils.print_n("[LOG] $b#cyan#Total execution time: {}s, search iterations: {:d}$\n",
                   datetime.timedelta(seconds=utils.stop_w.duration), its)
 
+    if args.print_graph:
+        bm.plot_var_graph()
+
 
 '''
 Entry point. Imports EML and calls to main function if this is main module.

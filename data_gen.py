@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 from argsmanaging import args
 import benchmarks
@@ -31,7 +32,11 @@ class ExamplesGenerator:
         return pandas.Series([self.__class] * (1 if single else len(self)))
 
     def get_weights(self, single=False):
-        return [self.__weight] * (1 if single else len(self))
+        result = [self.__weight]
+        if not single:
+            result += [self.__weight / 10] * (1 if single else len(self.__inferred))
+        return result
+        # return [self.__weight] * (1 if single else len(self))
 
 
 def __change_single_value(v, min_b, max_b):

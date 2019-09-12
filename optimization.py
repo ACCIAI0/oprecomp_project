@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 from sys import float_info
 
@@ -218,7 +219,7 @@ def __iterate(bm: benchmarks.Benchmark, mdl, regressor, classifier, previous_it:
 
 def __log_iteration(it: Iteration, n, t):
     if it.has_failed():
-        utils.print_n("[OPT] $yellow#{}$ $b#cyan#{}$", "Generated solution n. " + str(n), it.get_config())
+        utils.print_n("[OPT] $yellow#{}$", "Generated solution n. " + str(n))
     else:
         print("[OPT] Solution n. {:d} found in {:.3f}s:".format(n, t))
     target_label = "target error"
