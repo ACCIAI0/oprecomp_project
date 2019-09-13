@@ -136,7 +136,7 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier, r
         upper_bound = args.exponent + limit_search_exp
 
     # Moved this to be a lower bound instead of a constraint
-    target_error_log = numpy.ceil(-numpy.log10(args.error))
+    target_error_log = numpy.ceil(args.error_log)
     max_config = pandas.DataFrame.from_dict({'var_{}'.format(i): [args.max_bits_number]
                                              for i in range(bm.vars_number)})
     limit_predictable_error = regressor.predict(max_config)[0][0]
@@ -175,7 +175,12 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier, r
     return mdl
 
 
-def __refine_and_solve_mp(bm: benchmarks.Benchmark, mdl, n_iter, it: Iteration):
+def __refine_and_solve_mp(bm: benchmarks.Benchmark, mdl, n_iter, regressor, it: Iteration):
+    # Update upper-bound of y_var, since the regressor has been retrained
+    # max_config = pandas.DataFrame.from_dict({'var_{}'.format(i): [args.max_bits_number]
+    #                                         for i in range(bm.vars_number)})
+    # mdl.get_var_by_name('y').lb = regressor.predict(max_config)[0][0]
+
     # Remove an infeasible solution from the solutions pool
     if it is not None and not it.has_failed() and not it.is_feasible():
         bin_vars_cut_vals = []
@@ -206,7 +211,7 @@ def __get_predictions(config, regr, classifier):
 
 
 def __iterate(bm: benchmarks.Benchmark, mdl, regressor, classifier, previous_it: Iteration = None, n_iter=0):
-    opt_config, mdl = __refine_and_solve_mp(bm, mdl, n_iter, previous_it)
+    opt_config, mdl = __refine_and_solve_mp(bm, mdl, n_iter, regressor, previous_it)
     failed = False
     if opt_config is None:
         failed = True
@@ -218,16 +223,19 @@ def __iterate(bm: benchmarks.Benchmark, mdl, regressor, classifier, previous_it:
 
 
 def __log_iteration(it: Iteration, n, t):
+    form = "$"
+    source = "$b#FOUND$"
     if it.has_failed():
-        utils.print_n("[OPT] $yellow#{}$", "Generated solution n. " + str(n))
-    else:
-        print("[OPT] Solution n. {:d} found in {:.3f}s:".format(n, t))
+        form = "$yellow#"
+        source = "$b#yellow#GENERATED$"
+
+    utils.print_n("[OPT] Solution n. {:d} " + source + " in {:.3f}s:", n, t)
+
     target_label = "target error"
     error_label = "calculated error"
     predicted_label = "predicted error"
     log = "log({})"
-
-    utils.print_n("[OPT] $green#{}  {}$  |  $blue#{}$  $green#{}  {}$", error_label, predicted_label,
+    utils.print_n("[OPT] $green#{}  {}$  $blue#{}$  $green#{}  {}$", error_label, predicted_label,
                   log.format(target_label), log.format(error_label), log.format(predicted_label))
 
     pr = numpy.float_power(10, -it.get_predicted_error_log())
@@ -242,7 +250,7 @@ def __log_iteration(it: Iteration, n, t):
     predicted = (" " * (len(predicted_label) - len(formatted))) + formatted
     formatted = "{:.3f}".format(it.get_predicted_error_log())
     l_predicted = (" " * (len(predicted_label) + 5 - len(formatted))) + formatted
-    utils.print_n("[OPT] {}  {}  |  {}  {}  {}".format(error, predicted, l_target, l_error, l_predicted))
+    utils.print_n("[OPT] " + form + "{}  {}  {}  {}  {}$".format(error, predicted, l_target, l_error, l_predicted))
 
     state = "$blue#FEASIBLE$" if it.is_feasible() else "$red#NOT FEASIBLE$"
     utils.print_n("[OPT] Solution n. {:d} $b#cyan#{}$ is {}", n, it.get_config(), state)

@@ -20,22 +20,26 @@ class ExamplesGenerator:
     def __len__(self):
         return len(self.__inferred) + 1
 
-    def get_data_frame(self):
-        configs = self.__inferred + [self.__config]
-        return pandas.DataFrame.from_dict({'var_{}'.format(i): [configs[j][i] for j in range(len(configs))]
-                                           for i in range(len(configs[0]))})
+    def __get_regressor_target(self, only_original):
+        return pandas.Series([self.__error] * (1 if only_original else len(self)))
 
-    def get_regressor_target(self, single=False):
-        return pandas.Series([self.__error] * (1 if single else len(self)))
+    def __get_classifier_target(self, only_original):
+        return pandas.Series([self.__class] * (1 if only_original else len(self)))
 
-    def get_classifier_target(self, single=False):
-        return pandas.Series([self.__class] * (1 if single else len(self)))
+    def build_data_frame(self, regr_label, clfr_label, only_original=False):
+        configs = [self.__config]
+        if not only_original:
+            configs += self.__inferred
 
-    def get_weights(self, single=False):
-        result = [self.__weight]
-        if not single:
-            result += [self.__weight / 10] * (1 if single else len(self.__inferred))
-        return result
+        df = pandas.DataFrame.from_dict({'var_{}'.format(i): [configs[j][i] for j in range(len(configs))]
+                                         for i in range(len(configs[0]))})
+        df[regr_label] = self.__get_regressor_target(only_original)
+        df[clfr_label] = self.__get_classifier_target(only_original)
+
+        return df
+
+    def get_weights(self, only_original=False):
+        return [self.__weight] + [self.__weight / 1000] * (0 if only_original else len(self.__inferred))
         # return [self.__weight] * (1 if single else len(self))
 
 
@@ -77,14 +81,12 @@ def ml_refinement(bm: benchmarks.Benchmark, regressor, classifier,
     regr_target_label = 'reg'
     class_target_label = 'cls'
 
-    df = examples.get_data_frame()
-    df[regr_target_label] = examples.get_regressor_target()
-    df[class_target_label] = examples.get_classifier_target()
+    df = examples.build_data_frame(regr_target_label, class_target_label)
 
-    train = session.training_set
-    train[regr_target_label] = session.regressor_target.values
-    train[class_target_label] = session.classifier_target.values
-    train = pandas.concat([train, df])
+    clfr_training = session.training_set
+    clfr_training[regr_target_label] = session.regressor_target.values
+    clfr_training[class_target_label] = session.classifier_target.values
+    clfr_training = pandas.concat([clfr_training, df])
 
     test = session.test_set
     test[regr_target_label] = session.test_regressor.values
@@ -97,7 +99,7 @@ def ml_refinement(bm: benchmarks.Benchmark, regressor, classifier,
     trainer.train_regressor(regressor, batch_size=b_size, weights=weights, verbose=False)
     r_stats = trainer.test_regressor(bm, regressor)
 
-    session = training.TrainingSession(train, test, regr_target_label, class_target_label)
+    session = training.TrainingSession(clfr_training, test, regr_target_label, class_target_label)
     trainer = training.ClassifierTrainer.create_for(args.classifier_type, session)
     trainer.train_classifier(classifier)
     c_stats = trainer.test_classifier(bm, classifier)

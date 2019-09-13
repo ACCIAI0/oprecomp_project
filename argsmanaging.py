@@ -98,6 +98,10 @@ class ArgumentsHolder:
         return numpy.float_power(10, -self.exponent)
 
     @property
+    def error_log(self):
+        return -numpy.log10(self.error)
+
+    @property
     def regressor_type(self):
         return checkers['-reg'].last_value
 
