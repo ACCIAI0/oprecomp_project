@@ -27,11 +27,12 @@ class ArgError(Enum):
 
 
 class ArgChecker:
-    def __init__(self, code: str, p_num: int, default,
+    def __init__(self, code: str, p_num: int, default, description: str,
                  converter=str, checks=(lambda _: ArgError.NO_ERROR)):
         self.__code = code
         self.__pNum = p_num
         self.__default = default
+        self.__description = description
         self.__converter = converter
         self.__checks = checks
         self.__last_value = default
@@ -39,6 +40,14 @@ class ArgChecker:
     @property
     def code(self):
         return self.__code
+
+    @property
+    def description(self):
+        res = self.__description
+        is_float = isinstance(self.__default, float)
+        if self.__default is not None and (is_float and not numpy.isnan(self.__default) or not is_float):
+            res += "\n\t\tDEFAULT = " + str(self.__default)
+        return res
 
     @property
     def p_num(self):
@@ -67,17 +76,21 @@ class ArgChecker:
 
 
 checkers = {
-    '-bm': ArgChecker('bm', 1, None,
-                      checks=(lambda v: ArgError.NO_ERROR if benchmarks.exists(v) else ArgError.UNKNOWN_VALUE)),
-    '-exp': ArgChecker('exp', 1, 0, int, lambda v: ArgError.NO_ERROR if 0 < v else ArgError.INVALID_VALUE),
-    '-reg': ArgChecker('reg', 1, Regressor.NEURAL_NETWORK, Regressor),
-    '-cfr': ArgChecker('cfr', 1, Classifier.DECISION_TREE, Classifier),
-    '-ds': ArgChecker('ds', 1, 0, int),
-    '-b': ArgChecker('b', 1, 4, int),
-    '-B': ArgChecker('B', 1, 53, int),
-    '-et': ArgChecker('ds', 1, .9, float, lambda v: ArgError.NO_ERROR if 0 < v else ArgError.INVALID_VALUE),
-    '-p': ArgChecker('ds', 1, .3, float, lambda v: ArgError.NO_ERROR if 0 < v <= 1 else ArgError.INVALID_VALUE),
-    '-pg': ArgChecker('pg', 0, False)
+    '-bm': ArgChecker('bm', 1, None, "[MANDATORY] Specifies the benchmark to use.", str,
+                      (lambda v: ArgError.NO_ERROR if benchmarks.exists(v) else ArgError.UNKNOWN_VALUE)),
+    '-exp': ArgChecker('exp', 1, float('nan'),
+                       "[MANDATORY] Specifies the target error: '-exp n' is considered as the error 1e-n.", int,
+                       lambda v: ArgError.NO_ERROR if 0 < v else ArgError.INVALID_VALUE),
+    '-reg': ArgChecker('reg', 1, Regressor.NEURAL_NETWORK, "Specifies what type of regressor to use.", Regressor),
+    '-cfr': ArgChecker('cfr', 1, Classifier.DECISION_TREE, "Specifies what type of classifier to use.", Classifier),
+    '-ds': ArgChecker('ds', 1, 0, "Specifies the dataset index to use for training.", int),
+    '-b': ArgChecker('b', 1, 4, "Specifies the minimum number of bits for a variable.", int),
+    '-B': ArgChecker('B', 1, 53, "Specifies the maximum number of bits for a variable.", int),
+    '-et': ArgChecker('et', 1, .9, "Specifies the threshold over which errors are considered large.",
+                      float, lambda v: ArgError.NO_ERROR if 0 < v else ArgError.INVALID_VALUE),
+    '-p': ArgChecker('p', 1, .3, "Specifies the probability of changing a bit number when generating neighbours.",
+                     float, lambda v: ArgError.NO_ERROR if 0 < v <= 1 else ArgError.INVALID_VALUE),
+    '-pg': ArgChecker('pg', 0, False, "Specifies whether or not to print the variable graph after the run.")
 }
 
 
@@ -135,7 +148,7 @@ class ArgumentsHolder:
 
     @property
     def is_legal(self):
-        return self.benchmark is not None and 0 != self.exponent
+        return self.benchmark is not None and not numpy.isnan(self.exponent)
 
     def __str__(self):
         return "Benchmark $blue#{}$ ($blue#{:.1e}$, vars in $blue#{}$). $blue#{}$ regressor and $blue#{}$ classifier" \
@@ -160,11 +173,13 @@ def handle_args(argv):
         exit(-1)
 
     if argv[0] == '-help':
-        s = ''
-        for a in checkers.keys():
-            s += a + ', '
-        s = s[:len(s) - 2]
-        print("Possible parameters: {}".format(s))
+        if 2 <= len(argv) and argv[1] in checkers.keys():
+            print('\t\t' + checkers[argv[1]].description)
+        else:
+            s = ''
+            for a in checkers.keys():
+                s += a + '\t\t' + checkers[a].description + '\n\n'
+            print(s)
         exit(0)
 
     while 0 != len(argv):

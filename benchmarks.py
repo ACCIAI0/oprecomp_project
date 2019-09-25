@@ -71,6 +71,17 @@ class Benchmark:
         }
 
 
+__available = {
+    el.name: el for el in
+    [Benchmark(x.stem) for x in pathlib.Path.cwd().glob(Benchmark.b_home + '*')
+     if x.is_dir() and not x.stem.startswith('.')]
+}
+
+
+def get_all_names():
+    return __available.keys()
+
+
 def exists(name: str) -> bool:
     """
     Checks if a benchmark with the given name exists.
@@ -148,17 +159,3 @@ def run_benchmark_with_config(bm: Benchmark, opt_config, args):
 
     io_utils.write_configs_file(bm.configs_file, [args.max_bits_number] * bm.vars_number)
     return error
-
-
-__available = {
-    el.name: el for el in
-    [Benchmark(x.stem) for x in pathlib.Path.cwd().glob(Benchmark.b_home + '*')
-     if x.is_dir() and not x.stem.startswith('.')]
-}
-
-if __name__ == "__main__":
-    import argsmanaging
-    argss = argsmanaging.handle_args(["-bm", "correlation", "-exp", "5"])
-    brm = Benchmark("correlation")
-    print(run_benchmark_with_config(brm, [8, 8, 8, 8, 8, 8, 8], argss))
-    print(run_benchmark_with_config(brm, [48, 48, 48, 48, 48, 48, 48], argss))
