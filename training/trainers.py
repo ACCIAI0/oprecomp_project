@@ -1,65 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from sys import float_info
 import decimal
 
 import numpy
 import pandas
-from sklearn import model_selection, preprocessing, metrics, tree
+from sklearn import preprocessing, metrics, tree
 import keras
 from keras import models, layers, callbacks
 
 from argsmanaging import args, Regressor, Classifier
 import benchmarks
-
-
-__dataset_home = "datasets/"
-
-__clamped_error_limit = .9
-
-
-class TrainingSession:
-    def __init__(self, training_set, test_set, regressor_target_label, classifier_target_label):
-        self.__targetRegressor = training_set[regressor_target_label]
-        self.__targetClassifier = training_set[classifier_target_label]
-
-        del training_set[regressor_target_label]
-        del training_set[classifier_target_label]
-
-        self.__trainingSet = training_set
-
-        self.__testRegressor = test_set[regressor_target_label]
-        self.__testClassifier = test_set[classifier_target_label]
-
-        del test_set[regressor_target_label]
-        del test_set[classifier_target_label]
-
-        self.__testSet = test_set
-
-    @property
-    def training_set(self):
-        return self.__trainingSet
-
-    @property
-    def test_set(self):
-        return self.__testSet
-
-    @property
-    def regressor_target(self):
-        return self.__targetRegressor
-
-    @property
-    def classifier_target(self):
-        return self.__targetClassifier
-
-    @property
-    def test_regressor(self):
-        return self.__testRegressor
-
-    @property
-    def test_classifier(self):
-        return self.__testClassifier
+from training.session import TrainingSession
 
 
 class RegressorTrainer:
@@ -97,7 +49,7 @@ class NNRegressorTrainer(RegressorTrainer):
         self.__train_data_tensor = scaler.fit_transform(session.training_set)
         self.__test_data_tensor = scaler.fit_transform(session.test_set)
         self.__train_target_tensor = scaler.fit_transform(session.regressor_target.values.reshape(-1, 1))
-        self.__test_target_tensor = scaler.fit_transform(session.test_regressor.values.reshape(-1, 1))
+        self.__test_target_tensor = scaler.fit_transform(session.regressor_target_test.values.reshape(-1, 1))
 
     def create_regressor(self, benchmark: benchmarks.Benchmark):
         n_samples, n_features = self.__train_data_tensor.shape
@@ -244,11 +196,11 @@ class DTClassifierTrainer(ClassifierTrainer):
                 pred_classes[i] = 1
 
         precision_s, recall_s, fscore_s, xyz = metrics.precision_recall_fscore_support(
-            self._session.test_classifier, pred_classes, average='binary', pos_label=0)
+            self._session.classifier_target_test, pred_classes, average='binary', pos_label=0)
         precision_l, recall_l, fscore_l, xyz = metrics.precision_recall_fscore_support(
-            self._session.test_classifier, pred_classes, average='binary', pos_label=1)
+            self._session.classifier_target_test, pred_classes, average='binary', pos_label=1)
         precision_w, recall_w, fscore_w, xyz = metrics.precision_recall_fscore_support(
-            self._session.test_classifier, pred_classes, average='weighted')
+            self._session.classifier_target_test, pred_classes, average='weighted')
 
         stats_res = {
             'small_error_precision': precision_s,
@@ -260,61 +212,6 @@ class DTClassifierTrainer(ClassifierTrainer):
             'precision': precision_w,
             'recall': recall_w,
             'fscore': fscore_w,
-            'accuracy': metrics.accuracy_score(self._session.test_classifier, predicted)
+            'accuracy': metrics.accuracy_score(self._session.classifier_target_test, predicted)
         }
         return stats_res
-
-
-def __initialize_mean_std(bm: benchmarks.Benchmark, label: str, log_label: str, clamp: bool = True):
-    data_file = 'exp_results_{}.csv'.format(bm.name)
-
-    df = pandas.read_csv(__dataset_home + data_file, sep=';')
-
-    columns = [x for x in filter(lambda l: 'var_' in l or label == l, df.columns)]
-    df = df[columns]
-
-    if clamp:
-        df.loc[df[label] > __clamped_error_limit, label] = __clamped_error_limit
-    df[log_label] = [float_info.min if 0 == x else -numpy.log10(x) for x in df[label]]
-
-    return df
-
-
-def __select_subset(df: pandas.DataFrame, threshold: float, error_label: str, size: int):
-    n_large_errors = len(df[df[error_label] >= threshold])
-    ratio = n_large_errors / len(df)
-
-    if 0 == ratio:
-        return df.sample(size)
-    acc = 0
-    df_t = pandas.DataFrame()
-    while acc < ratio:
-        if size > len(df):
-            size = len(df) - 1
-        df_t = df.sample(size)
-        acc = len(df_t[error_label] >= threshold) / len(df_t)
-    return df_t
-
-
-def create_training_session(benchmark: benchmarks.Benchmark,
-                            initial_sampling_size: int = 3000, set_size: int = 500) -> TrainingSession:
-    label = 'err_ds_{}'.format(args.dataset_index)
-    log_label = 'err_log_ds_{}'.format(args.dataset_index)
-    class_label = 'class_ds_{}'.format(args.dataset_index)
-
-    # Initialize a pandas DataFrame from file, clamping error values and calculating log errors
-    df = __initialize_mean_std(benchmark, label, log_label)
-    # Keep entries with all non-zero values
-    df = df[(df != 0).all(1)]
-    # Selects a subset with a balanced ratio between high and low error values
-    df = __select_subset(df, args.large_error_threshold, label, initial_sampling_size)
-    # Reset indexes to start from 0
-    df = df.reset_index(drop=True)
-    # Calculates the classifier class column
-    df[class_label] = df.apply(lambda e: int(e[label] >= args.large_error_threshold), axis=1)
-    # Delete err_ds_<index> column as it is useless from here on
-    del df[label]
-    # Split in train set and test set
-    train, test = model_selection.train_test_split(df, test_size=(len(df) - set_size) / len(df))
-
-    return TrainingSession(train, test, log_label, class_label)

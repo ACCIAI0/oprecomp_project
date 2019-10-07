@@ -32,7 +32,7 @@ def main(argv):
 
     # Build training set and test set for a new training session
     utils.stop_w.start()
-    session = training.create_training_session(bm, set_size=500)
+    session = training.create_training_session(bm, set_size=2000)
     _, t = utils.stop_w.stop()
     utils.print_n("[LOG] Created first training session from dataset #{:d} in {:.3f}s ($green#{}$ entries for training,"
                   " $green#{}$ for test)", args.dataset_index, t, len(session.training_set),
@@ -65,7 +65,7 @@ def main(argv):
 
     # Create a MP model
     utils.stop_w.start()
-    optim_model = optimization.create_optimization_model(bm, regressor, classifier, limit_search_exp=6)
+    optim_model = optimization.create_optimization_model(bm, regressor, classifier)
     _, t = utils.stop_w.stop()
     print("[LOG] Created an optimization model in {:.3f}s\n".format(t))
 

@@ -75,22 +75,38 @@ class ArgChecker:
             return ArgError.CONVERSION_ERROR, None
 
 
+def __check_gt_zero(v):
+    return ArgError.NO_ERROR if 0 < v else ArgError.INVALID_VALUE
+
+
+def __check_ge_zero(v):
+    return ArgError.NO_ERROR if 0 <= v else ArgError.INVALID_VALUE
+
+
+def __gen_interval_check(lb, ub):
+    return lambda v: ArgError.NO_ERROR if lb < v <= ub else ArgError.INVALID_VALUE
+
+
 checkers = {
     '-bm': ArgChecker('bm', 1, None, "[MANDATORY] Specifies the benchmark to use.", str,
                       (lambda v: ArgError.NO_ERROR if benchmarks.exists(v) else ArgError.UNKNOWN_VALUE)),
     '-exp': ArgChecker('exp', 1, float('nan'),
                        "[MANDATORY] Specifies the target error: '-exp n' is considered as the error 1e-n.", int,
-                       lambda v: ArgError.NO_ERROR if 0 < v else ArgError.INVALID_VALUE),
+                       __check_gt_zero),
     '-reg': ArgChecker('reg', 1, Regressor.NEURAL_NETWORK, "Specifies what type of regressor to use.", Regressor),
     '-cfr': ArgChecker('cfr', 1, Classifier.DECISION_TREE, "Specifies what type of classifier to use.", Classifier),
-    '-ds': ArgChecker('ds', 1, 0, "Specifies the dataset index to use for training.", int),
-    '-b': ArgChecker('b', 1, 4, "Specifies the minimum number of bits for a variable.", int),
-    '-B': ArgChecker('B', 1, 53, "Specifies the maximum number of bits for a variable.", int),
+    '-ds': ArgChecker('ds', 1, 0, "Specifies the dataset index to use for training.", int, __gen_interval_check(0, 29)),
+    '-b': ArgChecker('b', 1, 4, "Specifies the minimum number of bits for a variable.", int, __check_gt_zero),
+    '-B': ArgChecker('B', 1, 53, "Specifies the maximum number of bits for a variable.", int, __check_gt_zero),
     '-et': ArgChecker('et', 1, .9, "Specifies the threshold over which errors are considered large.",
-                      float, lambda v: ArgError.NO_ERROR if 0 < v else ArgError.INVALID_VALUE),
+                      float, __check_gt_zero),
     '-p': ArgChecker('p', 1, .3, "Specifies the probability of changing a bit number when generating neighbours.",
-                     float, lambda v: ArgError.NO_ERROR if 0 < v <= 1 else ArgError.INVALID_VALUE),
-    '-pg': ArgChecker('pg', 0, False, "Specifies whether or not to print the variable graph after the run.")
+                     float, __gen_interval_check(0, 1)),
+    '-pg': ArgChecker('pg', 0, False, "Specifies whether or not to print the variable graph after the run.", bool),
+    '-limit': ArgChecker('limit', 1, 0, "Orders of magnitude within which to find the solution, starting from -exp.",
+                         int, __check_ge_zero),
+    '-manual': ArgChecker('manual', 0, False,
+                          "Specifies whether or not to enable manual step by step in looking for solutions.", bool)
 }
 
 
@@ -147,8 +163,18 @@ class ArgumentsHolder:
         return checkers['-pg'].last_value
 
     @property
+    def search_limit(self):
+        return checkers['-limit'].last_value
+
+    @property
+    def manual_toggled(self):
+        return checkers['-manual'].last_value
+
+    @property
     def is_legal(self):
-        return self.benchmark is not None and not numpy.isnan(self.exponent)
+        return self.benchmark is not None and \
+               not numpy.isnan(self.exponent) and \
+               self.min_bits_number < self.max_bits_number
 
     def __str__(self):
         return "Benchmark $blue#{}$ ($blue#{:.1e}$, vars in $blue#{}$). $blue#{}$ regressor and $blue#{}$ classifier" \
