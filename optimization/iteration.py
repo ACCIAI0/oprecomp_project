@@ -80,7 +80,7 @@ class Iteration:
         res_err = 0
 
         if self.__p_best_cfg is None:
-            if self.is_feasible:
+            if self.is_feasible and not self.__failed:
                 res, res_err = self.__config, self.__error
         else:
             sum_c = sum(self.__config)

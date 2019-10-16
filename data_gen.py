@@ -11,14 +11,14 @@ from sklearn import neighbors as skn
 
 
 class ExamplesGenerator:
-    def __init__(self, config, inferred, error, interpolated_errors, cls, interpolated_classes, unique_weight):
+    def __init__(self, config, inferred, error, interpolated_errors, cls, interpolated_classes, weights):
         self.__config = config
         self.__inferred = inferred
         self.__class = cls
         self.__interpolatedErrs = interpolated_errors
         self.__interpolatedClasses = interpolated_classes
         self.__error = error
-        self.__weight = unique_weight
+        self.__weights = weights
 
     def __len__(self):
         return len(self.__inferred) + 1
@@ -48,49 +48,42 @@ class ExamplesGenerator:
         return df
 
     def get_weights(self, only_original=False):
-        return [self.__weight] + [self.__weight / 1000] * (0 if only_original else len(self.__inferred))
+        return [self.__weights[0]] if only_original else self.__weights
 
 
-def __change_single_value(v, min_b, max_b):
+def __single_value_gen(v, min_b, max_b):
     p = numpy.random.random()
     if p <= args.variable_change_probability:
         v = int(numpy.clip(v + numpy.floor(numpy.random.normal(scale=2)), min_b, max_b))
     return v
 
 
-def __find_neighbours(solution, min_b, max_b, iterations):
+def __find_neighbours(bm: benchmarks.Benchmark, solution):
     n = []
-    for _ in range(iterations):
-        n.append([__change_single_value(solution[i], min_b, max_b) for i in range(len(solution))])
+    for _ in range(bm.vars_number * int(1 / args.variable_change_probability) * 10):
+        neighbour = [__single_value_gen(solution[i], args.min_bits_number, args.max_bits_number)
+                     for i in range(len(solution))]
+        n.append(neighbour)
 
-    # Remove doubles
+    # Remove doubles by ordering them: equal configurations end up being adjacent elements in the list
     n = sorted(n)
     return [n[i] for i in range(len(n)) if i == 0 or n[i] != n[i-1]]
 
 
 def infer_examples(bm: benchmarks.Benchmark, session: training.TrainingSession, it):
-    '''
-    temp = it
-    while temp is not None and temp.has_failed:
-        temp = temp.previous_iteration
+    w = numpy.maximum(1e-6, numpy.abs(it.get_error_log() - numpy.log10(args.error)))
 
-    if temp is not None:
-        it = temp
-    '''
+    neighbours = __find_neighbours(bm, it.config)
+    neighbours_w = [w * (1 if all([br.check_config(n) for br in bm.get_binary_relations().values()]) else .001)
+                    for n in neighbours]
 
-    delta = numpy.maximum(.004, numpy.abs(it.get_error_log() + numpy.log10(args.error)))
-    weight = 1 / delta
-
-    neighbours = __find_neighbours(it.config, args.min_bits_number, args.max_bits_number,
-                                   bm.vars_number * int(1 / args.variable_change_probability))
-
-    knn = skn.KNeighborsRegressor(n_neighbors=5)
+    knn = skn.KNeighborsRegressor(n_neighbors=5, weights='distance')
     knn.fit(session.full_training_data[['var_{}'.format(i) for i in range(bm.vars_number)]],
             session.full_training_data[['err_log', 'class']])
     predictions = knn.predict(numpy.array(neighbours))
 
     return ExamplesGenerator(it.config, neighbours, it.get_error_log(), [p[0] for p in predictions],
-                             it.get_error_class(), [1 if p[1] > .5 else 0 for p in predictions], weight)
+                             it.get_error_class(), [int(round(p[1])) for p in predictions], [w] + neighbours_w)
 
 
 def ml_refinement(bm: benchmarks.Benchmark, regressor, classifier,
@@ -112,12 +105,12 @@ def ml_refinement(bm: benchmarks.Benchmark, regressor, classifier,
     weights = numpy.asarray(examples.get_weights())
     single_session = training.TrainingSession(df, test.copy(), regr_target_label, class_target_label)
     trainer = training.RegressorTrainer.create_for(args.regressor_type, single_session)
-    b_size = len(df)
-    trainer.train_regressor(regressor, batch_size=b_size, weights=weights, verbose=False)
+    trainer.train_regressor(regressor, weights=weights, verbose=False)
     r_stats = trainer.test_regressor(bm, regressor)
 
     session = training.TrainingSession(clfr_training, test, regr_target_label, class_target_label)
     trainer = training.ClassifierTrainer.create_for(args.classifier_type, session)
     trainer.train_classifier(classifier)
     c_stats = trainer.test_classifier(bm, classifier)
+
     return session, r_stats, c_stats

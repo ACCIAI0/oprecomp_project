@@ -6,6 +6,8 @@ import json
 import networkx as nx
 import matplotlib.pyplot as plt
 
+from benchmarks.relater import Relater
+
 
 class VarType(Enum):
     V = 1,
@@ -29,13 +31,16 @@ class Variable:
     def __str__(self):
         return self.__name
 
-    def get_index(self):
+    @property
+    def index(self):
         return self.__index
 
-    def get_type(self) -> VarType:
+    @property
+    def type(self) -> VarType:
         return self.__type
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         return self.__name
 
     def is_of_type(self, var_type: VarType) -> bool:
@@ -187,19 +192,19 @@ def plot(graph: nx.DiGraph):
     plt.show()
 
 
-def extract_leq_relations(graph: nx.DiGraph, only_temp: bool = False) -> list:
+def extract_leq_relations(graph: nx.DiGraph, only_temp: bool = False) -> Relater:
     rels = []
     for n in graph.nodes:
         for nn in graph.successors(n):
             if not only_temp or n.is_of_type(VarType.T) or nn.is_of_type(VarType.T):
                 rels.append((n, nn))
-    return rels
+    return Relater('leq', rels, (lambda v1, v2: v1 <= v2[0]))
 
 
-def extract_cast_to_temp_relations(graph: nx.DiGraph) -> list:
+def extract_cast_to_temp_relations(graph: nx.DiGraph) -> Relater:
     rels = []
     for n in graph.nodes:
         if n.is_of_type(VarType.T) and 1 < len(list(graph.predecessors(n))):
             rels.append((n, list(graph.predecessors(n))))
-    return rels
+    return Relater('cast', rels, (lambda v1, v2: v1 <= min(v2)))
 

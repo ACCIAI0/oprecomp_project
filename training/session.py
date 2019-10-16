@@ -20,6 +20,9 @@ class TrainingSession:
 
         self.__testSet = test_set
 
+    def __len__(self):
+        return len(self.training_set)
+
     @property
     def full_training_data(self):
         copy = self.training_set.copy()

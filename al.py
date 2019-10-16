@@ -63,17 +63,11 @@ def main(argv):
     utils.print_n("[LOG] First training of the classifier completed in {:.3f}s (accuracy $green#{:.3f}%$)", t,
                   c_stats['accuracy'] * 100)
 
-    # Create a MP model
-    utils.stop_w.start()
-    optim_model = optimization.create_optimization_model(bm, regressor, classifier)
-    _, t = utils.stop_w.stop()
-    print("[LOG] Created an optimization model in {:.3f}s\n".format(t))
-
     # Solve optimization problem
-    config, its = optimization.try_model(bm, optim_model, regressor, classifier, session)
+    config, its = optimization.build_and_run_model(bm, regressor, classifier, session)
 
     utils.print_n("[LOG] SOLUTION FOUND: $b#green#{}$", config)
-    utils.print_n("[LOG] $b#cyan#Total execution time: {}s, search iterations: {:d}$\n",
+    utils.print_n("[LOG] $b#cyan#Total execution time: {}, search iterations: {:d}$\n",
                   datetime.timedelta(seconds=utils.stop_w.duration), its)
 
     if args.print_graph:

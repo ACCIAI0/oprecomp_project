@@ -5,7 +5,7 @@ import numpy
 import pandas
 
 from optimization.iteration import Iteration
-from optimization.model import refine_model, solve_model
+from optimization.model import create_optimization_model, refine_model, solve_model
 
 from argsmanaging import args
 import benchmarks
@@ -14,38 +14,32 @@ import data_gen
 import utils
 
 
-def __log_iteration(it: Iteration, n, t):
+def __log_iteration(it: Iteration, t):
     form = "$"
     source = "$b#FOUND$"
     if it.has_failed:
         form = "$yellow#"
         source = "$b#yellow#GENERATED$"
 
-    utils.print_n("[OPT] Solution n. {:d} " + source + " in {:.3f}s:", n, t)
+    utils.print_n("[OPT] Solution n. {:d} " + source + " in {:.3f}s:", it.iter_n, t)
 
-    target_label = "target error"
-    error_label = "calculated error"
-    predicted_label = "predicted error"
-    log = "log({})"
-    utils.print_n("[OPT] $green#{}  {}$  $blue#{}$  $green#{}  {}$", error_label, predicted_label,
-                  log.format(target_label), log.format(error_label), log.format(predicted_label))
+    target_label = "target error (log10)"
+    error_label = "calculated error (log10)"
+    predicted_label = "predicted error (log10)"
+    utils.print_n("[OPT] $blue#{}$  |  $green#{}  {}$", target_label, error_label, predicted_label)
 
     pr = numpy.float_power(10, -it.get_predicted_error_log())
 
-    formatted = "{:.3f}".format(-numpy.log10(args.error))
-    l_target = (" " * (len(target_label) + 5 - len(formatted))) + formatted
-    formatted = "{:.3e}".format(it.get_error())
+    formatted = "{:.3e} ({:.3f})".format(args.error, -numpy.log10(args.error))
+    target = (" " * (len(target_label) - len(formatted))) + formatted
+    formatted = "{:.3e} ({:.3f})".format(it.get_error(), it.get_error_log())
     error = (" " * (len(error_label) - len(formatted))) + formatted
-    formatted = "{:.3f}".format(it.get_error_log())
-    l_error = (" " * (len(error_label) + 5 - len(formatted))) + formatted
-    formatted = "{:.3e}".format(pr)
+    formatted = "{:.3e} ({:.3f})".format(pr, it.get_predicted_error_log())
     predicted = (" " * (len(predicted_label) - len(formatted))) + formatted
-    formatted = "{:.3f}".format(it.get_predicted_error_log())
-    l_predicted = (" " * (len(predicted_label) + 5 - len(formatted))) + formatted
-    utils.print_n("[OPT] " + form + "{}  {}  {}  {}  {}$".format(error, predicted, l_target, l_error, l_predicted))
+    utils.print_n("[OPT] " + form + "{}  |  {}  {}$", target, error, predicted)
 
     state = "$blue#FEASIBLE$" if it.is_feasible else "$red#NOT FEASIBLE$"
-    utils.print_n("[OPT] Solution n. {:d} $b#cyan#{}$ is {}", n, it.config, state)
+    utils.print_n("[OPT] Solution n. {:d} $b#cyan#{}$ is {}", it.iter_n, it.config, state)
     print()
 
 
@@ -56,37 +50,35 @@ def __get_predictions(config, regr, classifier):
     return prediction_with_conf[0], class_pred_with_conf
 
 
-def __iterate(bm: benchmarks.Benchmark, mdl, regressor, classifier, previous_it: Iteration):
-    opt_config = solve_model(mdl, bm)
+def __iterate(bm: benchmarks.Benchmark, mdl, regressor, classifier, previous: Iteration):
+    utils.stop_w.start()
+
+    opt_config, prediction, class_prediction = solve_model(mdl, bm)
     failed = False
     if opt_config is None:
         failed = True
         opt_config = numpy.random.randint(args.min_bits_number, args.max_bits_number, bm.vars_number)
+        prediction, class_prediction = __get_predictions(opt_config, regressor, classifier)
 
     error = benchmarks.run_benchmark_with_config(bm, opt_config, args)
-    predicted_error, predicted_class = __get_predictions(opt_config, regressor, classifier)
-    return Iteration(opt_config, error, predicted_error, predicted_class, previous_it, failed)
+    it = Iteration(opt_config, error, prediction, class_prediction, previous, failed)
 
-
-def __execute_step(bm: benchmarks.Benchmark, mdl, regressor, classifier, previous: Iteration):
-    utils.stop_w.start()
-    it = __iterate(bm, mdl, regressor, classifier, previous)
     _, t = utils.stop_w.stop()
-    __log_iteration(it, 0, t)
+
+    __log_iteration(it, t)
     return it
 
 
-def try_model(bm: benchmarks.Benchmark, mdl, regressor, classifier, session: training.TrainingSession,
-              max_iterations=100, refinement_steps=5):
-    it = __execute_step(bm, mdl, regressor, classifier, None)
+def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session: training.TrainingSession,
+                        max_iterations=100, refinement_steps=5):
+    utils.stop_w.start()
+    mdl = create_optimization_model(bm, regressor, classifier)
+    _, t = utils.stop_w.stop()
+    utils.print_n("[OPT] Created first draft of the opt model in {:.3f}s\n", t)
 
+    it = __iterate(bm, mdl, regressor, classifier, None)
     current_refinement = 0
     while current_refinement < refinement_steps and it.iter_n <= max_iterations:
-        best, _ = it.best_config_and_error
-        if best is not None:
-            current_refinement += 1
-            utils.print_n("[OPT] $b#cyan#Refinement {}$", current_refinement)
-
         utils.stop_w.start()
         examples = data_gen.infer_examples(bm, session, it)
         _, t = utils.stop_w.stop()
@@ -99,14 +91,20 @@ def try_model(bm: benchmarks.Benchmark, mdl, regressor, classifier, session: tra
                       "(accuracy $green#{:.3f}%$) in {:.3f}s", r_stats['MAE'], c_stats['accuracy'] * 100, t)
 
         utils.stop_w.start()
+        mdl = create_optimization_model(bm, regressor, classifier)
         refine_model(mdl, regressor, it, bm)
         _, t = utils.stop_w.stop()
-        utils.print_n("[OPT] Refined model in {:.3f}s\n", t)
+        utils.print_n("[OPT] Refined opt model in {:.3f}s\n", t)
 
         if args.manual_toggled:
             input("\n[Press any button for next iteration]")
 
-        it = __execute_step(bm, mdl, regressor, classifier, it)
+        best, _ = it.best_config_and_error
+        if best is not None:
+            current_refinement += 1
+            utils.print_n("[OPT] $b#cyan#Refinement {}$", current_refinement)
+
+        it = __iterate(bm, mdl, regressor, classifier, it)
 
     best, _ = it.best_config_and_error
     return best, it.iter_n - 1 - current_refinement

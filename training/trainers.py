@@ -78,7 +78,7 @@ class NNRegressorTrainer(RegressorTrainer):
         if weights is None:
             weights = numpy.full(len(self.__train_data_tensor), 1)
         regressor.fit(self.__train_data_tensor, self.__train_target_tensor, sample_weight=weights, epochs=epochs,
-                      batch_size=batch_size, shuffle=True, validation_split=0.1, verbose=verbose,
+                      batch_size=batch_size, shuffle=True, validation_split=0.0, verbose=verbose,
                       callbacks=[early_stopping, reduce_lr])
 
     def test_regressor(self, bm: benchmarks.Benchmark, regressor):
