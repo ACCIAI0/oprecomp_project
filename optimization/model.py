@@ -119,13 +119,11 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier):
 def refine_model(mdl: model.Model, regressor, it: Iteration, bm: benchmarks.Benchmark):
 
     # Update upper-bound of y_var, since the regressor has been retrained
-    '''
     max_config = pandas.DataFrame.from_dict({'var_{}'.format(i): [args.max_bits_number] for i in range(bm.vars_number)})
     predicted = regressor.predict(max_config)[0][0]
     var = mdl.get_var_by_name('y')
-    if predicted < var.ub:
+    if var.ub > predicted > var.lb:
         var.ub = predicted
-    '''
 
     # Remove an infeasible solution from the solutions pool
     if it is not None and not it.is_feasible:

@@ -58,9 +58,9 @@ def __single_value_gen(v, min_b, max_b):
     return v
 
 
-def __find_neighbours(bm: benchmarks.Benchmark, solution):
+def find_neighbours(solution):
     n = []
-    for _ in range(bm.vars_number * int(1 / args.variable_change_probability) * 10):
+    for _ in range(len(solution) * int(1 / args.variable_change_probability) * 10):
         neighbour = [__single_value_gen(solution[i], args.min_bits_number, args.max_bits_number)
                      for i in range(len(solution))]
         n.append(neighbour)
@@ -73,9 +73,8 @@ def __find_neighbours(bm: benchmarks.Benchmark, solution):
 def infer_examples(bm: benchmarks.Benchmark, session: training.TrainingSession, it):
     w = numpy.maximum(1e-6, numpy.abs(it.get_error_log() - numpy.log10(args.error)))
 
-    neighbours = __find_neighbours(bm, it.config)
-    neighbours_w = [w * (1 if all([br.check_config(n) for br in bm.get_binary_relations().values()]) else .001)
-                    for n in neighbours]
+    neighbours = find_neighbours(it.config)
+    neighbours_w = [w * (1 if bm.check_binary_relations_for(n) else .001) for n in neighbours]
 
     knn = skn.KNeighborsRegressor(n_neighbors=5, weights='distance')
     knn.fit(session.full_training_data[['var_{}'.format(i) for i in range(bm.vars_number)]],

@@ -68,3 +68,6 @@ class Benchmark:
                     vargraph.extract_cast_to_temp_relations(self.graph)
                 ]
                 }
+
+    def check_binary_relations_for(self, config) -> bool:
+        return all([br.check_config(config) for br in self.get_binary_relations().values()])
