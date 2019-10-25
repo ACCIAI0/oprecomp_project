@@ -168,27 +168,6 @@ class ClassifierTrainer:
         pass
 
     def test_classifier(self, bm: benchmarks.Benchmark, classifier):
-        pass
-
-
-class DTClassifierTrainer(ClassifierTrainer):
-    def __init__(self, session: TrainingSession):
-        super(DTClassifierTrainer, self).__init__(session)
-
-    def create_classifier(self, bm: benchmarks.Benchmark):
-        return tree.DecisionTreeClassifier(max_depth=bm.vars_number + 5)
-
-    def train_classifier(self, classifier, weights=None, weight_large_errors=10):
-        classes = self._session.classifier_target.tolist()
-        if weights is None:
-            weights = [1] * len(classes)
-        if weight_large_errors != 1:
-            for i in range(len(classes)):
-                if 1 == classes[i]:
-                    weights[i] *= weight_large_errors
-        classifier.fit(self._session.training_set, self._session.classifier_target, sample_weight=weights)
-
-    def test_classifier(self, bm: benchmarks.Benchmark, classifier):
         predicted = classifier.predict(self._session.test_set)
         pred_classes = [0] * len(predicted)
         for i in range(len(predicted)):
@@ -215,3 +194,21 @@ class DTClassifierTrainer(ClassifierTrainer):
             'accuracy': metrics.accuracy_score(self._session.classifier_target_test, predicted)
         }
         return stats_res
+
+
+class DTClassifierTrainer(ClassifierTrainer):
+    def __init__(self, session: TrainingSession):
+        super(DTClassifierTrainer, self).__init__(session)
+
+    def create_classifier(self, bm: benchmarks.Benchmark):
+        return tree.DecisionTreeClassifier(max_depth=bm.vars_number + 5)
+
+    def train_classifier(self, classifier, weights=None, weight_large_errors=10):
+        classes = self._session.classifier_target.tolist()
+        if weights is None:
+            weights = [1] * len(classes)
+        if weight_large_errors != 1:
+            for i in range(len(classes)):
+                if 1 == classes[i]:
+                    weights[i] *= weight_large_errors
+        classifier.fit(self._session.training_set, self._session.classifier_target, sample_weight=weights)

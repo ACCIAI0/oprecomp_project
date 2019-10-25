@@ -81,6 +81,8 @@ def create_training_session(bm: benchmarks.Benchmark, set_size: int = 500) -> Tr
     df[class_label] = df.apply(lambda e: int(e[label] >= args.large_error_threshold), axis=1)
     # Delete err_ds_<index> column as it is useless from here on
     del df[label]
+    # Drop all duplicates if any
+    df = df.drop_duplicates(subset=['var_{}'.format(i) for i in range(bm.vars_number)])
     # Split in train set and test set
     train, test = model_selection.train_test_split(df, test_size=.1)
 

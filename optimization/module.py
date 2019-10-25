@@ -74,13 +74,13 @@ def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session
     utils.stop_w.start()
     mdl = create_optimization_model(bm, regressor, classifier)
     _, t = utils.stop_w.stop()
-    utils.print_n("[OPT] Created first draft of the opt model in {:.3f}s\n", t)
+    utils.print_n("\n[OPT] Created first draft of the opt model in {:.3f}s\n", t)
 
     it = __iterate(bm, mdl, regressor, classifier, None)
     current_attempt = 0
     while current_attempt < attempt_steps and it.iter_n <= max_iterations:
         utils.stop_w.start()
-        examples = data_gen.infer_examples(bm, session, it)
+        examples = data_gen.infer_examples_for_retraining(bm, session, it)
         _, t = utils.stop_w.stop()
         utils.print_n("[OPT] Inferred $green#{}$ more examples in {:.3f}s", len(examples), t)
 
@@ -112,21 +112,26 @@ def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session
 
     for iteration in range(attempt_steps):
         utils.stop_w.start()
-        nbrs = filter(lambda c: bm.check_binary_relations_for(c) and sum(c) < sum(best), data_gen.find_neighbours(best))
-        if 0 == len(list(nbrs)):
-            utils.print_n("[OPT] $b#yellow#No better neighbours found$")
+        nbrs = list(
+            filter(lambda c: bm.check_binary_relations_for(c) and sum(c) < sum(best), data_gen.find_neighbours(best)))
+        if 0 == len(nbrs):
+            utils.print_n("[OPT] $b#yellow#No neighbours legal w.r. to vargraph found$")
             _, t = utils.stop_w.stop()
             break
 
-        nbrs = filter(lambda c: -numpy.log10(benchmarks.run_benchmark_with_config(bm, c, args)) >= args.error_log, nbrs)
+        errs, _ = data_gen.infer_errors(bm, nbrs, session.full_training_data, 'rbf')
+        filtered = []
+        for i in range(len(nbrs)):
+            if args.error_log <= errs[i]:
+                filtered.append(nbrs[i])
+        nbrs = sorted(filtered, key=sum)
         _, t = utils.stop_w.stop()
 
-        nbrs = sorted(nbrs, key=sum)
         if 0 == len(nbrs):
-            utils.print_n("[OPT] No better neighbours found after {:.3f}s", t)
+            utils.print_n("[OPT] No better neighbours found after {:.3f}s\n", t)
             break
         best = nbrs[0]
         utils.print_n("[OPT] $b#cyan#Neighbourhood refinement {}$", iteration + 1)
-        utils.print_n("[OPT] found better neighbour $b#cyan#{}$ after {:.3f}s", best, t)
+        utils.print_n("[OPT] found better neighbour $b#cyan#{}$ after {:.3f}s\n", best, t)
 
     return best, it.iter_n - 1 - current_attempt
