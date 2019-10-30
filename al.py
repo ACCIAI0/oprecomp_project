@@ -30,6 +30,9 @@ def main(argv):
     _, t = utils.stop_w.stop()
     utils.print_n("[LOG] {} loaded in {:.3f}s ($green#{}$ variables)", bm.name, t, n)
 
+    if args.print_graph:
+        bm.plot_var_graph()
+
     # Build training set and test set for a new training session
     utils.stop_w.start()
     session = training.create_training_session(bm, set_size=1000)
@@ -63,15 +66,27 @@ def main(argv):
     utils.print_n("[LOG] First training of the classifier completed in {:.3f}s (accuracy $green#{:.3f}%$)", t,
                   c_stats['accuracy'] * 100)
 
+    log = None
+    if args.dump_location is not None:
+        log = optimization.Log()
+
     # Solve optimization problem
-    config, its = optimization.build_and_run_model(bm, regressor, classifier, session)
+    config, its = optimization.build_and_run_model(bm, regressor, classifier, session, log=log)
 
     utils.print_n("[LOG] SOLUTION FOUND: $b#green#{}$", config)
     utils.print_n("[LOG] $b#cyan#Total execution time: {}, search iterations: {:d}$\n",
                   datetime.timedelta(seconds=utils.stop_w.duration), its)
 
-    if args.print_graph:
-        bm.plot_var_graph()
+    if log is not None:
+        log.best_solution = config
+        i = 0
+        while True:
+            name = "{}/{}_{}_#{}.json".format(args.dump_location, args.benchmark, args.exponent, i)
+            if not os.path.isfile(name):
+                break
+            i += 1
+        with open(name, "w") as f:
+            f.write(str(log))
 
 
 '''

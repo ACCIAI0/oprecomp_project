@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from enum import Enum
-
 import pandas
 import numpy
 from sklearn import neighbors as nbrs
@@ -21,19 +19,19 @@ def __to_tuple(l):
     return e, c
 
 
-def nearest_neighbours(bm: benchmarks.Benchmark, configs, data: pandas.DataFrame):
+def __nearest_neighbours(bm: benchmarks.Benchmark, configs, data: pandas.DataFrame):
     knn = nbrs.KNeighborsRegressor(n_neighbors=5, weights='distance')
     knn.fit(data[['var_{}'.format(i) for i in range(bm.vars_number)]], data[['err_log', 'class']])
     return __to_tuple(knn.predict(numpy.array(configs)))
 
 
-def linear_interpolation(bm: benchmarks.Benchmark, configs, data: pandas.DataFrame):
+def __linear_interpolation(bm: benchmarks.Benchmark, configs, data: pandas.DataFrame):
     i = interpolate.LinearNDInterpolator(data[['var_{}'.format(i) for i in range(bm.vars_number)]].to_numpy().tolist(),
                                          data[['err_log', 'class']].to_numpy().tolist())
     return __to_tuple(i(configs))
 
 
-def rbf(bm: benchmarks.Benchmark, configs, data: pandas.DataFrame):
+def __rbf(bm: benchmarks.Benchmark, configs, data: pandas.DataFrame):
     data.drop_duplicates()
     array = [data['var_{}'.format(i)].tolist() for i in range(bm.vars_number)]
     array.append(data['err_log'].tolist())
@@ -44,7 +42,7 @@ def rbf(bm: benchmarks.Benchmark, configs, data: pandas.DataFrame):
 
 
 infer_modes = {
-    'nearest_n': nearest_neighbours,
-    'linear': linear_interpolation,
-    'rbf': rbf
+    'nearest_n': __nearest_neighbours,
+    'linear': __linear_interpolation,
+    'rbf': __rbf
 }

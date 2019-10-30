@@ -64,13 +64,12 @@ def __iterate(bm: benchmarks.Benchmark, mdl, regressor, classifier, previous: It
     it = Iteration(opt_config, error, prediction, class_prediction, previous, failed)
 
     _, t = utils.stop_w.stop()
-
     __log_iteration(it, t)
     return it
 
 
 def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session: training.TrainingSession,
-                        max_iterations=100, attempt_steps=5):
+                        max_iterations=100, attempt_steps=5, log=None):
     utils.stop_w.start()
     mdl = create_optimization_model(bm, regressor, classifier)
     _, t = utils.stop_w.stop()
@@ -90,6 +89,9 @@ def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session
         utils.print_n("[OPT] Retrained regressor (MAE $green#{:.3f}$) and classifier "
                       "(accuracy $green#{:.3f}%$) in {:.3f}s", r_stats['MAE'], c_stats['accuracy'] * 100, t)
 
+        if log is not None:
+            log.insert_iteration(it, r_stats, c_stats)
+
         utils.stop_w.start()
         mdl = create_optimization_model(bm, regressor, classifier)
         refine_model(mdl, regressor, it, bm)
@@ -101,8 +103,6 @@ def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session
 
         best, _ = it.best_config_and_error
         if best is not None:
-            # if it.has_failed:
-            #    refinement_steps += 1
             current_attempt += 1
             utils.print_n("[OPT] $b#cyan#Extra attempt {}$", current_attempt)
 
@@ -131,6 +131,10 @@ def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session
             utils.print_n("[OPT] No better neighbours found after {:.3f}s\n", t)
             break
         best = nbrs[0]
+
+        if log is not None:
+            log.insert_neighbour_search(len(nbrs), best)
+
         utils.print_n("[OPT] $b#cyan#Neighbourhood refinement {}$", iteration + 1)
         utils.print_n("[OPT] found better neighbour $b#cyan#{}$ after {:.3f}s\n", best, t)
 

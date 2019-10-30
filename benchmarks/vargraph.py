@@ -208,3 +208,7 @@ def extract_cast_to_temp_relations(graph: nx.DiGraph) -> Relater:
             rels.append((n, list(graph.predecessors(n))))
     return Relater('cast', rels, (lambda v1, v2: v1 <= min(v2)))
 
+
+if __name__ == '__main__':
+    g = parse_vars_file('../flexfloat-benchmarks/correlation/program_vardeps.json')
+    plot(g)
