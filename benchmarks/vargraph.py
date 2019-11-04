@@ -176,13 +176,29 @@ def __parse_default(graph, op, level):
     return __parser[op[0]](graph, op, level)
 
 
+def __merge_nodes(graph):
+    tnodes = []
+    vnodes = []
+    for node in graph.nodes():
+        if node[0].is_of_type(VarType.T):
+            tnodes.append(node)
+        else:
+            vnodes.append(node)
+    for tn in tnodes:
+        for vn in vnodes:
+            if tn.index == vn.index:
+                graph = nx.contracted_nodes(graph, vn, tn)
+                break
+    return graph
+
+
 def parse_vars_file(file: str) -> nx.DiGraph:
     with open(file) as jfile:
         data = json.load(jfile)
     graph = nx.DiGraph()
     for op in data:
         __parse_default(graph, op, 0)
-    return graph
+    return __merge_nodes(graph)
 
 
 def plot(graph: nx.DiGraph):
