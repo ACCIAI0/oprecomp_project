@@ -68,7 +68,7 @@ def __embed_ml_models(bm: benchmarks.Benchmark, mdl: model.Model, regressor, cla
     dt_embed.encode_backward_implications(backend, cls_em, mdl, x_vars, class_var, 'classifier')
 
 
-def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier):
+def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier, iteration: Iteration = None):
     mdl = model.Model()
     x_vars = [mdl.integer_var(lb=args.min_bits_number, ub=args.max_bits_number, name='x_{}'.format(i))
               for i in range(bm.vars_number)]
@@ -79,7 +79,7 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier):
 
     # If it is a limited search in n orders of magnitudes, change the upper_bound to be -log(10e-(n + exp)) where exp is
     # the input parameter to calculate the error.
-    if 0 != args.search_limit:
+    if 0 != args.search_limit and upper_bound > args.exponent + args.search_limit:
         upper_bound = args.exponent + args.search_limit
 
     if upper_bound < args.error_log:
@@ -94,6 +94,7 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier):
 
     # Adding relations from graph
     relations = bm.get_binary_relations()
+    print(relations)
     for vs, vg in relations['leq']:
         x_vs = mdl.get_var_by_name('x_{}'.format(vs.index))
         x_vg = mdl.get_var_by_name('x_{}'.format(vg.index))
@@ -102,6 +103,12 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier):
         x_vt = mdl.get_var_by_name('x_{}'.format(vt.index))
         x_vv = [mdl.get_var_by_name('x_{}'.format(v.index)) for v in vv]
         mdl.add_constraint(mdl.min(x_vv) == x_vt)
+
+    # Add a constraint to force the model to find better solutions than the one currently given as the best one
+    if iteration is not None:
+        best, _ = iteration.best_config_and_error
+        if best is not None:
+            mdl.add_constraint(mdl.get_var_by_name('bit_sum') <= mdl.sum(best) - 1)
 
     # Embed the ML models in the MP
     __embed_ml_models(bm, mdl, regressor, classifier)
@@ -116,27 +123,22 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier):
     return mdl
 
 
-def refine_model(mdl: model.Model, regressor, it: Iteration, bm: benchmarks.Benchmark):
-
-    # Update upper-bound of y_var, since the regressor has been retrained
-    max_config = pandas.DataFrame.from_dict({'var_{}'.format(i): [args.max_bits_number] for i in range(bm.vars_number)})
-    predicted = regressor.predict(max_config)[0][0]
-    var = mdl.get_var_by_name('y')
-    if var.ub > predicted > var.lb:
-        var.ub = predicted
-
-    # Remove an infeasible solution from the solutions pool
-    if it is not None and not it.is_feasible:
-        bin_vars_cut_vals = []
-        for i in range(len(it.config)):
-            x_var = mdl.get_var_by_name('x_{}'.format(i))
-            bin_vars_cut_vals.append(mdl.binary_var(name='bvcv_{}_{}'.format(it.iter_n, i)))
-            mdl.add(mdl.if_then(x_var == it.config[i], bin_vars_cut_vals[i] == 1))
-        mdl.add_constraint(mdl.sum(bin_vars_cut_vals) <= 1)
+def refine_model(mdl: model.Model, iteration: Iteration):
+    # Remove any infeasible solution from the solutions pool
+    '''
+    for it in iteration:
+        if it is not None and not it.is_feasible:
+            bin_vars_cut_vals = []
+            for i in range(len(it.config)):
+                x_var = mdl.get_var_by_name('x_{}'.format(i))
+                bin_vars_cut_vals.append(mdl.binary_var(name='bvcv_{}_{}'.format(it.iter_n, i)))
+                mdl.add(mdl.if_then(x_var == it.config[i], bin_vars_cut_vals[i] == 1))
+            mdl.add_constraint(mdl.sum(bin_vars_cut_vals) <= 1)
+    '''
 
     # Add a constraint to force the model to find better solutions than the one currently given as the best one
-    if it is not None:
-        best, _ = it.best_config_and_error
+    if iteration is not None:
+        best, _ = iteration.best_config_and_error
         if best is not None:
             mdl.add_constraint(mdl.get_var_by_name('bit_sum') <= mdl.sum(best) - 1)
 

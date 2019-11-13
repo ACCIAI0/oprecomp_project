@@ -109,7 +109,9 @@ checkers = {
     '-manual': ArgChecker('manual', 0, False,
                           "Specifies whether or not to enable manual step by step in looking for solutions.", bool),
     '-dump': ArgChecker('dump', 1, None, "Specifies the directory where to dump the result of the computation.", str,
-                        lambda d: ArgError.NO_ERROR if path.isdir(d) else ArgError.INVALID_VALUE)
+                        lambda d: ArgError.NO_ERROR if path.isdir(d) else ArgError.INVALID_VALUE),
+    '-steps': ArgChecker('steps', 1, 5, "Specifies how many attempt steps to execute after the first result is found.",
+                         int, __check_gt_zero)
 }
 
 
@@ -176,6 +178,10 @@ class ArgumentsHolder:
     @property
     def dump_location(self):
         return checkers['-dump'].last_value
+
+    @property
+    def steps(self):
+        return checkers['-steps'].last_value
 
     @property
     def is_legal(self):

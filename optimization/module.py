@@ -59,6 +59,7 @@ def __iterate(bm: benchmarks.Benchmark, mdl, regressor, classifier, previous: It
         failed = True
         opt_config = numpy.random.randint(args.min_bits_number, args.max_bits_number, bm.vars_number)
         prediction, class_prediction = __get_predictions(opt_config, regressor, classifier)
+        opt_config = opt_config.tolist()
 
     error = benchmarks.run_benchmark_with_config(bm, opt_config, args)
     it = Iteration(opt_config, error, prediction, class_prediction, previous, failed)
@@ -69,7 +70,7 @@ def __iterate(bm: benchmarks.Benchmark, mdl, regressor, classifier, previous: It
 
 
 def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session: training.TrainingSession,
-                        max_iterations=100, attempt_steps=5, log=None):
+                        max_iterations=100, log=None):
     utils.stop_w.start()
     mdl = create_optimization_model(bm, regressor, classifier)
     _, t = utils.stop_w.stop()
@@ -77,7 +78,7 @@ def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session
 
     it = __iterate(bm, mdl, regressor, classifier, None)
     current_attempt = 0
-    while current_attempt < attempt_steps and it.iter_n <= max_iterations:
+    while current_attempt < args.steps and it.iter_n <= max_iterations:
         utils.stop_w.start()
         examples = data_gen.infer_examples_for_retraining(bm, session, it)
         _, t = utils.stop_w.stop()
@@ -93,8 +94,8 @@ def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session
             log.insert_iteration(it, r_stats, c_stats)
 
         utils.stop_w.start()
-        mdl = create_optimization_model(bm, regressor, classifier)
-        refine_model(mdl, regressor, it, bm)
+        mdl.end()
+        mdl = create_optimization_model(bm, regressor, classifier, it)
         _, t = utils.stop_w.stop()
         utils.print_n("[OPT] Refined opt model in {:.3f}s\n", t)
 
@@ -110,12 +111,13 @@ def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session
 
     best, _ = it.best_config_and_error
 
-    for iteration in range(attempt_steps):
+    for iteration in range(args.steps):
         utils.stop_w.start()
-        nbrs = list(
-            filter(lambda c: bm.check_binary_relations_for(c) and sum(c) < sum(best), data_gen.find_neighbours(best)))
+        # bm.check_binary_relations_for(c) and
+        s_b = sum(best)
+        nbrs = list(filter(lambda c: bm.check_binary_relations_for(c) and sum(c) < s_b, data_gen.find_neighbours(best)))
         if 0 == len(nbrs):
-            utils.print_n("[OPT] $b#yellow#No neighbours legal w.r. to vargraph found$")
+            utils.print_n("[OPT] $b#yellow#No lower-sum neighbours found$")
             _, t = utils.stop_w.stop()
             break
 

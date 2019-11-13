@@ -79,6 +79,7 @@ def main(argv):
 
     if log is not None:
         log.best_solution = config
+        log.time = utils.stop_w.duration
         i = 0
         while True:
             name = "{}/{}_{}_#{}.json".format(args.dump_location, args.benchmark, args.exponent, i)

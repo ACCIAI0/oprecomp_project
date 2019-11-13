@@ -25,6 +25,7 @@ def __nearest_neighbours(bm: benchmarks.Benchmark, configs, data: pandas.DataFra
     return __to_tuple(knn.predict(numpy.array(configs)))
 
 
+# Don't use, too slow
 def __linear_interpolation(bm: benchmarks.Benchmark, configs, data: pandas.DataFrame):
     i = interpolate.LinearNDInterpolator(data[['var_{}'.format(i) for i in range(bm.vars_number)]].to_numpy().tolist(),
                                          data[['err_log', 'class']].to_numpy().tolist())

@@ -33,6 +33,14 @@ class Iteration:
                "{:.3f}".format(self.get_predicted_error_log()) + \
                " (" + str(self.__pClass) + ")"
 
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.__previous is None:
+            raise StopIteration
+        return self.__previous
+
     @property
     def iter_n(self):
         return self.__iterN

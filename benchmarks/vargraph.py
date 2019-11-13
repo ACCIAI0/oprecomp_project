@@ -31,6 +31,9 @@ class Variable:
     def __str__(self):
         return self.__name
 
+    def __repr__(self):
+        return self.__str__()
+
     @property
     def index(self):
         return self.__index
@@ -180,7 +183,7 @@ def __merge_nodes(graph):
     tnodes = []
     vnodes = []
     for node in graph.nodes():
-        if node[0].is_of_type(VarType.T):
+        if node.is_of_type(VarType.T):
             tnodes.append(node)
         else:
             vnodes.append(node)
@@ -208,21 +211,22 @@ def plot(graph: nx.DiGraph):
     plt.show()
 
 
-def extract_leq_relations(graph: nx.DiGraph, only_temp: bool = False) -> Relater:
+def extract_leq_relations(graph: nx.DiGraph) -> Relater:
     rels = []
     for n in graph.nodes:
         for nn in graph.successors(n):
-            if not only_temp or n.is_of_type(VarType.T) or nn.is_of_type(VarType.T):
-                rels.append((n, nn))
+            # ALERT: it doesn't count those relations where the right variable is temporary (T)
+            # if (not only_temp or n.is_of_type(VarType.T)) and not n.is_of_type(VarType.T):
+            rels.append((n, nn))
     return Relater('leq', rels, (lambda v1, v2: v1 <= v2[0]))
 
 
 def extract_cast_to_temp_relations(graph: nx.DiGraph) -> Relater:
     rels = []
     for n in graph.nodes:
-        if n.is_of_type(VarType.T) and 1 < len(list(graph.predecessors(n))):
+        if n.is_of_type(VarType.T) and 0 < len(list(graph.predecessors(n))):
             rels.append((n, list(graph.predecessors(n))))
-    return Relater('cast', rels, (lambda v1, v2: v1 <= min(v2)))
+    return Relater('cast', rels, (lambda v1, v2: v1 == min(v2)))
 
 
 if __name__ == '__main__':

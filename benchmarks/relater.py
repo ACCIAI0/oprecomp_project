@@ -14,6 +14,12 @@ class Relater:
     def __getitem__(self, i):
         return self.__varRels[i]
 
+    def __str__(self):
+        return self.__name + ": " + str(self.__varRels)
+
+    def __repr__(self):
+        return self.__str__()
+
     @property
     def name(self):
         return self.__name
