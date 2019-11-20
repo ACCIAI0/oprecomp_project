@@ -53,7 +53,7 @@ For a complete list of all parameters names refer to the following list or execu
 | `-setsplit` | Specifies the ratio between test set and training set | | 0.1 |
 | `-steps` | Specifies how many more steps steps to run after the first non-generated feasible solution has been found | | 5 |
 
-An example of run is the following:
+An example run is the following:
 ```
 python3 al.py -bm convolution -exp 5 -limit 5 -steps 8 -manual -dump ..
 ```
