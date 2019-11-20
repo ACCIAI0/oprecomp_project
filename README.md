@@ -23,7 +23,7 @@ All of them can be downloaded and installed using `pip`:
 pip install <library_name>
 ```
 
-EML is another required library, but since it wouldn't work from PYTHONPATH, it's been encapsulated in this project. To get the latest update of the library refer to the officiale [EMLlib Git repo](https://github.com/emlopt/emllib)
+EML is another required library, but since it wouldn't work from PYTHONPATH, it's been encapsulated in this project. To get the latest update of the library refer to the official [EMLlib Git repo](https://github.com/emlopt/emllib)
 
 ## Running the project
 The main module is `al.py` and it can be launched with the command
