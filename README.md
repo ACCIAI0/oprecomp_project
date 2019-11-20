@@ -1,13 +1,13 @@
 # OPRECOMP Project
 This project is part of a research project conducted by the University of Bologna about energy efficiency in high precision computing. It's been developed as a master degree thesis project.
 
-##Getting Started
-###Prerequisites
+## Getting Started
+### Prerequisites
 * a compatible Linux-based distro (Ubuntu 18.04 has been proven to be compatible)
 * Python 3.6 or later, latest version [here](https://www.python.org/downloads/)
 * [Cplex](https://www.ibm.com/it-it/products/ilog-cplex-optimization-studio) and [DOcplex](https://developer.ibm.com/docloud/documentation/optimization-modeling/modeling-for-python/) installed
 
-###Python libraries
+### Python libraries
 * numpy
 * pandas
 * tensorflow
@@ -23,7 +23,7 @@ All of them can be downloaded and installed using `pip`:
 pip install <library_name>
 ```
 
-##Running the project
+## Running the project
 The main module is `al.py` and it can be launched with the command
 ```
 python3 al.py <arg1> <arg2> ... 
