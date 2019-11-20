@@ -15,12 +15,15 @@ from argsmanaging import args
 __dataset_home = "datasets/"
 
 
-def __initialize_mean_std(bm: benchmarks.Benchmark, label: str, log_label: str, clamp: bool = True):
+def __initialize(bm: benchmarks.Benchmark, label: str, log_label: str, clamp: bool = True):
     data_file = 'exp_results_{}.csv'.format(bm.name)
 
     df = pandas.read_csv(__dataset_home + data_file, sep=';')
     columns = [x for x in filter(lambda l: 'var_' in l or label == l, df.columns)]
     df = df[columns]
+
+    # Delete entries with all zero values
+    df = df[(df != 0).all(1)]
 
     if clamp:
         df.loc[df[label] > args.large_error_threshold, label] = args.large_error_threshold
@@ -60,7 +63,7 @@ def __select_categorized_subset(bm: benchmarks.Benchmark, df: pandas.DataFrame, 
     for i in range(n_groups):
         lb = min_sum + delta * i
         ub = lb + delta - 1
-        df_r = pandas.concat([df_r, __select_in(df, lb, ub, int(size * (4 - i) / 10.0))])
+        df_r = pandas.concat([df_r, __select_in(df, lb, ub, int(size * (n_groups - i) / 10.0))])
     return df_r
 
 
@@ -70,9 +73,7 @@ def create_training_session(bm: benchmarks.Benchmark) -> TrainingSession:
     class_label = 'class_ds_{}'.format(args.dataset_index)
 
     # Initialize a pandas DataFrame from file, clamping error values and calculating log errors
-    df = __initialize_mean_std(bm, label, log_label)
-    # Keep entries with all non-zero values
-    df = df[(df != 0).all(1)]
+    df = __initialize(bm, label, log_label)
     # Selects a subset with a balanced ratio between high and low error values
     df_r = __select_subset(df, label, int(args.set_size / 2))
     df_f = __select_categorized_subset(bm, df, int(args.set_size / 2))
