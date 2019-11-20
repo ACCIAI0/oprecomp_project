@@ -5,7 +5,7 @@ import numpy
 import pandas
 
 from optimization.iteration import Iteration
-from optimization.model import create_optimization_model, refine_model, solve_model
+from optimization.model import create_optimization_model, solve_model
 
 from argsmanaging import args
 import benchmarks
@@ -69,6 +69,41 @@ def __iterate(bm: benchmarks.Benchmark, mdl, regressor, classifier, previous: It
     return it
 
 
+def __local_search(bm: benchmarks.Benchmark, session: training.TrainingSession, best, log):
+    for iteration in range(args.steps):
+        utils.stop_w.start()
+        # bm.check_binary_relations_for(c) and
+        s_b = sum(best)
+        nbrs = list(filter(lambda c: sum(c) < s_b, data_gen.find_neighbours(best)))
+        if 0 == len(nbrs):
+            utils.print_n("[OPT] $b#yellow#No lower-sum neighbours found$")
+            _, t = utils.stop_w.stop()
+            break
+
+        errs, _ = data_gen.infer_errors(bm, nbrs, session.full_training_data, 'rbf')
+        filtered = []
+        for i in range(len(nbrs)):
+            if args.error_log <= errs[i]:
+                filtered.append(nbrs[i])
+        nbrs = sorted(filtered, key=sum)
+
+        if 0 == len(nbrs):
+            utils.print_n("[OPT] No better neighbours found\n")
+            break
+
+        utils.print_n("[OPT] $b#cyan#Neighbourhood refinement {}$", iteration + 1)
+        if -numpy.log10(benchmarks.run_benchmark_with_config(bm, nbrs[0], args)) > args.exponent:
+            best = nbrs[0]
+            if log is not None:
+                log.insert_neighbour_search(len(nbrs), best)
+            _, t = utils.stop_w.stop()
+            utils.print_n("[OPT] found better neighbour $b#cyan#{}$ after {:.3f}s\n", best, t)
+        else:
+            _, t = utils.stop_w.stop()
+            utils.print_n("[OPT] found neighbour $b#red#{}$ after {:.3f}s, $red#NOT FEASIBLE$\n", nbrs[0], t)
+    return best
+
+
 def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session: training.TrainingSession,
                         max_iterations=100, log=None):
     utils.stop_w.start()
@@ -111,33 +146,6 @@ def build_and_run_model(bm: benchmarks.Benchmark, regressor, classifier, session
 
     best, _ = it.best_config_and_error
 
-    for iteration in range(args.steps):
-        utils.stop_w.start()
-        # bm.check_binary_relations_for(c) and
-        s_b = sum(best)
-        nbrs = list(filter(lambda c: bm.check_binary_relations_for(c) and sum(c) < s_b, data_gen.find_neighbours(best)))
-        if 0 == len(nbrs):
-            utils.print_n("[OPT] $b#yellow#No lower-sum neighbours found$")
-            _, t = utils.stop_w.stop()
-            break
-
-        errs, _ = data_gen.infer_errors(bm, nbrs, session.full_training_data, 'rbf')
-        filtered = []
-        for i in range(len(nbrs)):
-            if args.error_log <= errs[i]:
-                filtered.append(nbrs[i])
-        nbrs = sorted(filtered, key=sum)
-        _, t = utils.stop_w.stop()
-
-        if 0 == len(nbrs):
-            utils.print_n("[OPT] No better neighbours found after {:.3f}s\n", t)
-            break
-        best = nbrs[0]
-
-        if log is not None:
-            log.insert_neighbour_search(len(nbrs), best)
-
-        utils.print_n("[OPT] $b#cyan#Neighbourhood refinement {}$", iteration + 1)
-        utils.print_n("[OPT] found better neighbour $b#cyan#{}$ after {:.3f}s\n", best, t)
+    best = __local_search(bm, session, best, log)
 
     return best, it.iter_n - 1 - current_attempt

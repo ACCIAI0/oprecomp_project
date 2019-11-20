@@ -106,6 +106,10 @@ checkers = {
     '-pg': ArgChecker('pg', 0, False, "Specifies whether or not to print the variable graph after the run.", bool),
     '-limit': ArgChecker('limit', 1, 0, "Orders of magnitude within which to find the solution, starting from -exp.",
                          int, __check_ge_zero),
+    '-setsize': ArgChecker('setsize', 1, 1000, "Specifies the data set size, then split in training set and test set.",
+                           int, __check_gt_zero),
+    '-setsplit': ArgChecker('setsplit', 1, .1, "Specifies the ratio between test set and training set.", int,
+                            __gen_interval_check(0, 1)),
     '-manual': ArgChecker('manual', 0, False,
                           "Specifies whether or not to enable manual step by step in looking for solutions.", bool),
     '-dump': ArgChecker('dump', 1, None, "Specifies the directory where to dump the result of the computation.", str,
@@ -170,6 +174,14 @@ class ArgumentsHolder:
     @property
     def search_limit(self):
         return checkers['-limit'].last_value
+
+    @property
+    def set_size(self):
+        return checkers['-setsize'].last_value
+
+    @property
+    def set_split(self):
+        return checkers['-setsplit'].last_value
 
     @property
     def manual_toggled(self):

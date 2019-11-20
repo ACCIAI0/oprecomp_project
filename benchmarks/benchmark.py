@@ -56,7 +56,7 @@ class Benchmark:
 
     @property
     def is_flagged(self):
-        return self.__flag
+        return self.__flag or self.__nVars > 20
 
     def plot_var_graph(self):
         vargraph.plot(self.graph)

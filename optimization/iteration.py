@@ -8,6 +8,18 @@ import numpy
 from argsmanaging import args
 
 
+class IterationIterator:
+    def __init__(self, it):
+        self.__it = it
+
+    def __next__(self):
+        if self.__it is None:
+            raise StopIteration
+        r = self.__it
+        self.__it = self.__it.previous_iteration
+        return r
+
+
 class Iteration:
     def __init__(self, config, error, predicted_error, predicted_class, previous_iteration, failed):
         self.__config = config
@@ -34,12 +46,7 @@ class Iteration:
                " (" + str(self.__pClass) + ")"
 
     def __iter__(self):
-        return self
-
-    def next(self):
-        if self.__previous is None:
-            raise StopIteration
-        return self.__previous
+        return IterationIterator(self)
 
     @property
     def iter_n(self):

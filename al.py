@@ -35,7 +35,7 @@ def main(argv):
 
     # Build training set and test set for a new training session
     utils.stop_w.start()
-    session = training.create_training_session(bm, set_size=1000)
+    session = training.create_training_session(bm)
     _, t = utils.stop_w.stop()
     utils.print_n("[LOG] Created first training session from dataset #{:d} in {:.3f}s ($green#{}$ entries for training,"
                   " $green#{}$ for test)", args.dataset_index, t, len(session.training_set),

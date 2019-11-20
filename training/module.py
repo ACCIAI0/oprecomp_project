@@ -64,7 +64,7 @@ def __select_categorized_subset(bm: benchmarks.Benchmark, df: pandas.DataFrame, 
     return df_r
 
 
-def create_training_session(bm: benchmarks.Benchmark, set_size: int = 500) -> TrainingSession:
+def create_training_session(bm: benchmarks.Benchmark) -> TrainingSession:
     label = 'err_ds_{}'.format(args.dataset_index)
     log_label = 'err_log_ds_{}'.format(args.dataset_index)
     class_label = 'class_ds_{}'.format(args.dataset_index)
@@ -74,8 +74,8 @@ def create_training_session(bm: benchmarks.Benchmark, set_size: int = 500) -> Tr
     # Keep entries with all non-zero values
     df = df[(df != 0).all(1)]
     # Selects a subset with a balanced ratio between high and low error values
-    df_r = __select_subset(df, label, int(set_size / 2))
-    df_f = __select_categorized_subset(bm, df, int(set_size / 2))
+    df_r = __select_subset(df, label, int(args.set_size / 2))
+    df_f = __select_categorized_subset(bm, df, int(args.set_size / 2))
     df = pandas.concat([df_r, df_f], ignore_index=True)
     # Calculates the classifier class column
     df[class_label] = df.apply(lambda e: int(e[label] >= args.large_error_threshold), axis=1)
@@ -84,6 +84,6 @@ def create_training_session(bm: benchmarks.Benchmark, set_size: int = 500) -> Tr
     # Drop all duplicates if any
     df = df.drop_duplicates(subset=['var_{}'.format(i) for i in range(bm.vars_number)])
     # Split in train set and test set
-    train, test = model_selection.train_test_split(df, test_size=.1)
+    train, test = model_selection.train_test_split(df, test_size=args.set_split)
 
     return TrainingSession(train, test, log_label, class_label)

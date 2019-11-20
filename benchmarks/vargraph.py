@@ -217,6 +217,7 @@ def extract_leq_relations(graph: nx.DiGraph) -> Relater:
         for nn in graph.successors(n):
             # ALERT: it doesn't count those relations where the right variable is temporary (T)
             # if (not only_temp or n.is_of_type(VarType.T)) and not n.is_of_type(VarType.T):
+            # if not n.is_of_type(VarType.T):
             rels.append((n, nn))
     return Relater('leq', rels, (lambda v1, v2: v1 <= v2[0]))
 

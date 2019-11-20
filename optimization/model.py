@@ -73,13 +73,12 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier, i
     x_vars = [mdl.integer_var(lb=args.min_bits_number, ub=args.max_bits_number, name='x_{}'.format(i))
               for i in range(bm.vars_number)]
 
-    max_config = pandas.DataFrame.from_dict({'var_{}'.format(i): [args.max_bits_number]
-                                             for i in range(bm.vars_number)})
+    max_config = pandas.DataFrame.from_dict({'var_{}'.format(i): [args.max_bits_number] for i in range(bm.vars_number)})
     upper_bound = regressor.predict(max_config)[0][0]
 
     # If it is a limited search in n orders of magnitudes, change the upper_bound to be -log(10e-(n + exp)) where exp is
     # the input parameter to calculate the error.
-    if 0 != args.search_limit and upper_bound > args.exponent + args.search_limit:
+    if 0 != args.search_limit:  # and upper_bound > args.exponent + args.search_limit:
         upper_bound = args.exponent + args.search_limit
 
     if upper_bound < args.error_log:
@@ -94,7 +93,6 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier, i
 
     # Adding relations from graph
     relations = bm.get_binary_relations()
-    print(relations)
     for vs, vg in relations['leq']:
         x_vs = mdl.get_var_by_name('x_{}'.format(vs.index))
         x_vg = mdl.get_var_by_name('x_{}'.format(vg.index))
@@ -110,6 +108,17 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier, i
         if best is not None:
             mdl.add_constraint(mdl.get_var_by_name('bit_sum') <= mdl.sum(best) - 1)
 
+    # Remove any infeasible solution from the solutions pool
+    if iteration is not None:
+        for it in iteration:
+            if it is not None and not it.is_feasible:
+                bin_vars_cut_vals = []
+                for i in range(len(it.config)):
+                    x_var = mdl.get_var_by_name('x_{}'.format(i))
+                    bin_vars_cut_vals.append(mdl.binary_var(name='bvcv_{}_{}'.format(it.iter_n, i)))
+                    mdl.add(mdl.if_then(x_var == it.config[i], bin_vars_cut_vals[i] == 1))
+                mdl.add_constraint(mdl.sum(bin_vars_cut_vals) <= 1)
+
     # Embed the ML models in the MP
     __embed_ml_models(bm, mdl, regressor, classifier)
 
@@ -121,26 +130,6 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier, i
     mdl.set_time_limit(30)
 
     return mdl
-
-
-def refine_model(mdl: model.Model, iteration: Iteration):
-    # Remove any infeasible solution from the solutions pool
-    '''
-    for it in iteration:
-        if it is not None and not it.is_feasible:
-            bin_vars_cut_vals = []
-            for i in range(len(it.config)):
-                x_var = mdl.get_var_by_name('x_{}'.format(i))
-                bin_vars_cut_vals.append(mdl.binary_var(name='bvcv_{}_{}'.format(it.iter_n, i)))
-                mdl.add(mdl.if_then(x_var == it.config[i], bin_vars_cut_vals[i] == 1))
-            mdl.add_constraint(mdl.sum(bin_vars_cut_vals) <= 1)
-    '''
-
-    # Add a constraint to force the model to find better solutions than the one currently given as the best one
-    if iteration is not None:
-        best, _ = iteration.best_config_and_error
-        if best is not None:
-            mdl.add_constraint(mdl.get_var_by_name('bit_sum') <= mdl.sum(best) - 1)
 
 
 def solve_model(mdl: model.Model, bm: benchmarks.Benchmark):
