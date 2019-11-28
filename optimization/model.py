@@ -60,11 +60,12 @@ def __embed_ml_models(bm: benchmarks.Benchmark, mdl: model.Model, regressor, cla
     backend = cplex_backend.CplexBackend()
     x_vars = [mdl.get_var_by_name('x_{}'.format(i)) for i in range(bm.vars_number)]
     y_var = mdl.get_var_by_name('y')
-    class_var = mdl.get_var_by_name('class')
     reg_em = __eml_regressors[args.regressor_type](bm, regressor)
     nn_embed.encode(backend, reg_em, mdl, x_vars, y_var, 'regressor')
 
+    class_var = mdl.get_var_by_name('class')
     cls_em = __eml_classifiers[args.classifier_type](bm, classifier)
+
     dt_embed.encode_backward_implications(backend, cls_em, mdl, x_vars, class_var, 'classifier')
 
 
@@ -121,7 +122,6 @@ def create_optimization_model(bm: benchmarks.Benchmark, regressor, classifier, i
 
     # Embed the ML models in the MP
     __embed_ml_models(bm, mdl, regressor, classifier)
-
     mdl.add_constraint(class_var <= .5)
     mdl.add_constraint(bit_sum_var == mdl.sum(x_vars))
 

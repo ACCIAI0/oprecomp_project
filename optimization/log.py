@@ -33,6 +33,10 @@ class Log:
             .replace('_Log__', '')
 
     @property
+    def benchmark(self):
+        return self.__benchmark
+
+    @property
     def target(self):
         return self.__target
 
@@ -72,8 +76,8 @@ class Log:
         self.__iterations.append({
             'configuration': iteration.config,
             'exp': iteration.get_error_log(),
-            'error': iteration.get_error_log(),
-            'p_error': iteration.get_predicted_error_log(),
+            'error': iteration.get_error(),
+            'p_exp': iteration.get_predicted_error_log(),
             'generated': iteration.has_failed,
             'mae': float(r_stats['MAE']),
             'mse': float(r_stats['MSE']),

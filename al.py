@@ -7,6 +7,7 @@ warnings.filterwarnings('ignore')
 import sys
 import os
 import datetime
+import copy
 
 from tensorflow.compat.v1 import logging
 
@@ -15,6 +16,17 @@ import argsmanaging
 import benchmarks
 import training
 import optimization
+
+
+def save_log(log, args):
+    i = 0
+    while True:
+        name = "{}/{}_{}_#{}.json".format(args.dump_location, args.benchmark, args.exponent, i)
+        if not os.path.isfile(name):
+            break
+        i += 1
+    with open(name, "w") as f:
+        f.write(str(log))
 
 
 def main(argv):
@@ -31,7 +43,7 @@ def main(argv):
     utils.print_n("[LOG] {} loaded in {:.3f}s ($green#{}$ variables)", bm.name, t, n)
 
     if args.print_graph:
-        bm.plot_var_graph()
+        bm.print_var_graph("graph")
 
     # Build training set and test set for a new training session
     utils.stop_w.start()
@@ -73,26 +85,16 @@ def main(argv):
     # Solve optimization problem
     config, its = optimization.build_and_run_model(bm, regressor, classifier, session, log=log)
 
-    utils.print_n("[LOG] SOLUTION FOUND: $b#green#{}$", config)
+    utils.print_n("[LOG] FINAL SOLUTION: $b#green#{}$", config)
     utils.print_n("[LOG] $b#cyan#Total execution time: {}, search iterations: {:d}$\n",
                   datetime.timedelta(seconds=utils.stop_w.duration), its)
 
     if log is not None:
         log.best_solution = config
         log.time = utils.stop_w.duration
-        i = 0
-        while True:
-            name = "{}/{}_{}_#{}.json".format(args.dump_location, args.benchmark, args.exponent, i)
-            if not os.path.isfile(name):
-                break
-            i += 1
-        with open(name, "w") as f:
-            f.write(str(log))
+        save_log(log, args)
 
 
-'''
-Entry point. Imports EML and calls to main function if this is main module.
-'''
 if __name__ == '__main__':
     # Remove annoying warning prints from output
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'

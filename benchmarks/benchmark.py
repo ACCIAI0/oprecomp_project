@@ -58,8 +58,8 @@ class Benchmark:
     def is_flagged(self):
         return self.__flag or self.__nVars > 20
 
-    def plot_var_graph(self):
-        vargraph.plot(self.graph)
+    def print_var_graph(self, img_name):
+        vargraph.save(self.graph, img_name)
 
     def get_binary_relations(self) -> dict:
         return {r.name: r for r in

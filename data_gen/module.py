@@ -15,7 +15,7 @@ import training
 def __single_value_gen(v, min_b, max_b):
     p = numpy.random.random()
     if p <= args.variable_change_probability:
-        v = int(numpy.clip(v + numpy.floor(numpy.random.normal(scale=2)), min_b, max_b))
+        v = int(numpy.clip(v + numpy.floor(numpy.random.normal(scale=1)), min_b, max_b))
     return v
 
 
@@ -77,3 +77,13 @@ def ml_refinement(bm: benchmarks.Benchmark, regressor, classifier,
     c_stats = trainer.test_classifier(bm, classifier)
 
     return session, r_stats, c_stats
+
+
+if '__main__' == __name__:
+    found = False
+    count = 0
+    while not found:
+        n = find_neighbours([13, 16, 12, 8, 14, 13, 15])
+        count += len(n)
+        found = [13, 13, 13, 13, 13, 13, 13] in n
+    print(1.0 / count)

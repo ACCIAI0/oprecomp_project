@@ -43,3 +43,4 @@ class ExamplesGenerator:
 
     def get_weights(self, only_original=False):
         return [self.__weights[0]] if only_original else self.__weights
+

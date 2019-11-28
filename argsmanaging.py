@@ -85,7 +85,7 @@ def __check_ge_zero(v):
 
 
 def __gen_interval_check(lb, ub):
-    return lambda v: ArgError.NO_ERROR if lb < v <= ub else ArgError.INVALID_VALUE
+    return lambda v: ArgError.NO_ERROR if lb <= v <= ub else ArgError.INVALID_VALUE
 
 
 checkers = {
@@ -114,6 +114,9 @@ checkers = {
                           "Specifies whether or not to enable manual step by step in looking for solutions.", bool),
     '-dump': ArgChecker('dump', 1, None, "Specifies the directory where to dump the result of the computation.", str,
                         lambda d: ArgError.NO_ERROR if path.isdir(d) else ArgError.INVALID_VALUE),
+    '-searchv': ArgChecker('searchv', 1, 0,
+                           "Specifies which version to use when executing a neighborhood search (0 = No search)", int,
+                           __gen_interval_check(0, 2)),
     '-steps': ArgChecker('steps', 1, 5, "Specifies how many attempt steps to execute after the first result is found.",
                          int, __check_gt_zero)
 }
@@ -194,6 +197,10 @@ class ArgumentsHolder:
     @property
     def steps(self):
         return checkers['-steps'].last_value
+
+    @property
+    def search_version(self):
+        return checkers['-searchv'].last_value
 
     @property
     def is_legal(self):

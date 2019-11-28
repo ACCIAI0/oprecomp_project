@@ -204,11 +204,9 @@ def parse_vars_file(file: str) -> nx.DiGraph:
     return __merge_nodes(graph)
 
 
-def plot(graph: nx.DiGraph):
-    # Creates the figure the draw call will use
-    fig = plt.figure()
+def save(graph: nx.DiGraph, name):
     nx.draw_kamada_kawai(graph, with_labels=True, node_size=512, alpha=1, font_weight='bold')
-    plt.show()
+    plt.savefig("{}.svg".format(name), bbox_inches='tight')
 
 
 def extract_leq_relations(graph: nx.DiGraph) -> Relater:
